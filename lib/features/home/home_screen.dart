@@ -16,6 +16,17 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _expandedIndex;
   final _classroom = ClassroomService();
 
+  @override
+  void initState() {
+    super.initState();
+    _tryRestoreSession();
+  }
+
+  Future<void> _tryRestoreSession() async {
+    await _classroom.restoreSession();
+    if (mounted) setState(() {});
+  }
+
   void _toggleExpanded(int index) {
     setState(() {
       _expandedIndex = _expandedIndex == index ? null : index;
@@ -205,42 +216,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Classroom button
+              // Classroom indicator (no exit button)
               if (_classroom.isInClassroom)
-                GestureDetector(
-                  onTap: _leaveClassroom,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00E676).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF00E676).withValues(alpha: 0.5),
-                      ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.5),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.school_rounded,
-                            color: Color(0xFF00E676), size: 20),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'En clase: ${_classroom.studentName} (${_classroom.sessionCode})',
-                            style: GoogleFonts.orbitron(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF00E676),
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.school_rounded,
+                          color: Color(0xFF00E676), size: 20),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'En clase: ${_classroom.studentName}',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF00E676),
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.close_rounded,
-                            color: Color(0xFF00E676), size: 16),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 )
               else

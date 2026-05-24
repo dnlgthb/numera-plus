@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ClassroomService {
   static final ClassroomService _instance = ClassroomService._();
@@ -19,13 +20,46 @@ class ClassroomService {
 
   final List<Map<String, String>> _pendingEvents = [];
 
-  Future<Map<String, dynamic>?> validateCode(String code) async {
-    final res = await http.get(
-      Uri.parse('$_baseUrl/sessions/${code.toUpperCase()}'),
-    );
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body) as Map<String, dynamic>;
+  Future<void> restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString('classroom_studentId');
+    final code = prefs.getString('classroom_sessionCode');
+    final name = prefs.getString('classroom_studentName');
+    if (id != null && code != null && name != null) {
+      final session = await validateCode(code);
+      if (session != null) {
+        _studentId = id;
+        _sessionCode = code;
+        _studentName = name;
+      } else {
+        await _clearSaved();
+      }
     }
+  }
+
+  Future<void> _saveSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('classroom_studentId', _studentId!);
+    await prefs.setString('classroom_sessionCode', _sessionCode!);
+    await prefs.setString('classroom_studentName', _studentName!);
+  }
+
+  Future<void> _clearSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('classroom_studentId');
+    await prefs.remove('classroom_sessionCode');
+    await prefs.remove('classroom_studentName');
+  }
+
+  Future<Map<String, dynamic>?> validateCode(String code) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/sessions/${code.toUpperCase()}'),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body) as Map<String, dynamic>;
+      }
+    } catch (_) {}
     return null;
   }
 
@@ -40,6 +74,7 @@ class ClassroomService {
       _studentId = data['studentId'] as String;
       _sessionCode = code.toUpperCase();
       _studentName = name;
+      await _saveSession();
       return true;
     }
     return false;
@@ -50,6 +85,7 @@ class ClassroomService {
     _sessionCode = null;
     _studentName = null;
     _pendingEvents.clear();
+    _clearSaved();
   }
 
   Future<void> sendEvent({
@@ -69,9 +105,7 @@ class ClassroomService {
       if (correctAnswer != null) 'correctAnswer': correctAnswer,
     });
 
-    if (_pendingEvents.length >= 5) {
-      await flush();
-    }
+    await flush();
   }
 
   Future<void> flush() async {
