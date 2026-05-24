@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/sum_generator.dart';
+import '../../core/classroom_service.dart';
 import '../algorithm/algorithm_screen.dart';
 import '../combat/combat_screen.dart';
 
@@ -13,11 +14,118 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int? _expandedIndex;
+  final _classroom = ClassroomService();
 
   void _toggleExpanded(int index) {
     setState(() {
       _expandedIndex = _expandedIndex == index ? null : index;
     });
+  }
+
+  void _showJoinDialog() {
+    final codeController = TextEditingController();
+    final nameController = TextEditingController();
+    String? errorText;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1528),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Unirse a Clase',
+              style: GoogleFonts.orbitron(
+                  fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: codeController,
+                textCapitalization: TextCapitalization.characters,
+                style: GoogleFonts.orbitron(
+                    fontSize: 20, color: Colors.white, letterSpacing: 4),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: 'CÓDIGO',
+                  hintStyle: GoogleFonts.orbitron(
+                      fontSize: 16, color: Colors.white38, letterSpacing: 4),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.08),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameController,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Tu nombre',
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.08),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+              if (errorText != null) ...[
+                const SizedBox(height: 8),
+                Text(errorText!,
+                    style: const TextStyle(color: Color(0xFFFF4081), fontSize: 13)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9B59E8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final code = codeController.text.trim();
+                final name = nameController.text.trim();
+                if (code.isEmpty || name.length < 2) {
+                  setDialogState(() =>
+                      errorText = 'Ingresa el código y tu nombre');
+                  return;
+                }
+                setDialogState(() => errorText = null);
+
+                final session = await _classroom.validateCode(code);
+                if (session == null) {
+                  setDialogState(
+                      () => errorText = 'Código no encontrado o expirado');
+                  return;
+                }
+
+                final ok = await _classroom.joinSession(code, name);
+                if (ok) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  setState(() {});
+                } else {
+                  setDialogState(() => errorText = 'Error al unirse');
+                }
+              },
+              child: const Text('Unirse',
+                  style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _leaveClassroom() {
+    _classroom.leaveSession();
+    setState(() {});
   }
 
   @override
@@ -91,6 +199,74 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              // Classroom button
+              if (_classroom.isInClassroom)
+                GestureDetector(
+                  onTap: _leaveClassroom,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.school_rounded,
+                            color: Color(0xFF00E676), size: 20),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'En clase: ${_classroom.studentName} (${_classroom.sessionCode})',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF00E676),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.close_rounded,
+                            color: Color(0xFF00E676), size: 16),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: _showJoinDialog,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.school_rounded,
+                            color: Colors.white70, size: 20),
+                        const SizedBox(width: 8),
+                        Text('Unirse a Clase',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white70,
+                            )),
+                      ],
+                    ),
+                  ),
+                ),
               const SizedBox(height: 20),
             ],
           ),

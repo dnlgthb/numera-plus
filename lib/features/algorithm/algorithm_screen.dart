@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../core/sum_generator.dart';
+import '../../core/classroom_service.dart';
+import '../../core/local_progress_service.dart';
 import 'widgets/column_sum_widget.dart';
 import 'widgets/column_subtraction_widget.dart';
 import 'widgets/column_multiplication_widget.dart';
@@ -25,6 +27,9 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
   bool _mentalMode = false;
   bool _decimalMode = false;
 
+  final _classroom = ClassroomService();
+  final _localProgress = LocalProgressService();
+
   // Shared stats
   int _completed = 0;
   int _errors = 0;
@@ -39,6 +44,37 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
   void initState() {
     super.initState();
     _problem = SumGenerator.generateProgressive(0, operation: widget.operation, decimal: _decimalMode);
+    if (!_classroom.isInClassroom) _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    final data = await _localProgress.loadProgress(_opName);
+    if (!mounted) return;
+    setState(() {
+      _completed = data['completed']!;
+      _errors = data['errors']!;
+      _maxStreak = data['maxStreak']!;
+      _coins = data['coins']!;
+    });
+    _problem = SumGenerator.generateProgressive(
+      _completed, operation: widget.operation, decimal: _decimalMode);
+  }
+
+  void _saveProgress() {
+    if (_classroom.isInClassroom) return;
+    _localProgress.saveProgress(
+      operation: _opName,
+      completed: _completed,
+      errors: _errors,
+      maxStreak: _maxStreak,
+      coins: _coins,
+    );
+  }
+
+  @override
+  void dispose() {
+    _classroom.flush();
+    super.dispose();
   }
 
   void _newProblem() {
@@ -62,12 +98,38 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
     });
   }
 
+  String get _opName => switch (widget.operation) {
+    OperationType.sum => 'suma',
+    OperationType.subtraction => 'resta',
+    OperationType.multiplication => 'multi',
+    OperationType.division => 'div',
+  };
+
+  String get _problemStr => '${_problem.a} ${switch (widget.operation) {
+    OperationType.sum => '+',
+    OperationType.subtraction => '-',
+    OperationType.multiplication => '×',
+    OperationType.division => '÷',
+  }} ${_problem.b}';
+
+  void _reportEvent(bool correct, {String? answer}) {
+    _classroom.sendEvent(
+      eventType: correct ? 'correct' : 'error',
+      operationType: _opName,
+      problemText: _problemStr,
+      studentAnswer: answer,
+      correctAnswer: '${_problem.answer}',
+    );
+  }
+
   // --- Practicar callbacks ---
   void _onPracticeCompleted(bool correct) {
     setState(() {
       _completed++;
       if (!correct) _errors++;
     });
+    _reportEvent(correct);
+    _saveProgress();
     Future.delayed(const Duration(milliseconds: 800), _newProblem);
   }
 
@@ -75,6 +137,8 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
     setState(() {
       _errors++;
     });
+    _reportEvent(false);
+    _saveProgress();
   }
 
   // --- Desafio callbacks ---
@@ -96,6 +160,8 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
         _starsInCurrentCoinCycle = 0; // lose stars toward next coin
       }
     });
+    _reportEvent(correct);
+    _saveProgress();
     Future.delayed(const Duration(milliseconds: 1500), _newProblem);
   }
 

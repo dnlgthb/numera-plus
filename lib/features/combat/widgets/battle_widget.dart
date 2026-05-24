@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/sum_generator.dart';
 import '../../../core/character_type.dart';
+import '../../../core/classroom_service.dart';
 enum BattlePhase { selecting, fighting, transition, victory, defeat }
 
 class BattleWidget extends StatefulWidget {
@@ -16,6 +17,8 @@ class BattleWidget extends StatefulWidget {
 
 class _BattleWidgetState extends State<BattleWidget>
     with TickerProviderStateMixin {
+  final _classroom = ClassroomService();
+
   BattlePhase _phase = BattlePhase.selecting;
   CharacterType _playerCharacter = CharacterType.mage;
   List<CharacterType> _opponents = [];
@@ -91,6 +94,7 @@ class _BattleWidgetState extends State<BattleWidget>
   void dispose() {
     _roundActive = false;
     _machineThinking = false;
+    _classroom.flush();
     _spellController.dispose();
     _machineSpellController.dispose();
     _shakeController.dispose();
@@ -187,6 +191,13 @@ class _BattleWidgetState extends State<BattleWidget>
         _playerAnswer = _playerAnswer.substring(0, _playerAnswer.length - 1));
   }
 
+  String get _opName => switch (widget.operation) {
+    OperationType.sum => 'suma',
+    OperationType.subtraction => 'resta',
+    OperationType.multiplication => 'multi',
+    OperationType.division => 'div',
+  };
+
   void _onSubmit() {
     if (_playerAnswer.isEmpty || !_roundActive || _lastResult != null) return;
     final bool correct;
@@ -197,6 +208,19 @@ class _BattleWidgetState extends State<BattleWidget>
       final reversed = _playerAnswer.split('').reversed.join('');
       correct = int.tryParse(reversed) == _problem.answer;
     }
+
+    _classroom.sendEvent(
+      eventType: correct ? 'correct' : 'error',
+      operationType: _opName,
+      problemText: '${_problem.a} ${_isDivision ? '÷' : switch (widget.operation) {
+        OperationType.sum => '+',
+        OperationType.subtraction => '-',
+        OperationType.multiplication => '×',
+        _ => '',
+      }} ${_problem.b}',
+      studentAnswer: _playerAnswer,
+      correctAnswer: '${_problem.answer}',
+    );
 
     if (correct) {
       _roundActive = false;
