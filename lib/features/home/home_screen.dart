@@ -99,19 +99,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
                 setDialogState(() => errorText = null);
 
-                final session = await _classroom.validateCode(code);
-                if (session == null) {
-                  setDialogState(
-                      () => errorText = 'Código no encontrado o expirado');
-                  return;
-                }
+                try {
+                  final session = await _classroom.validateCode(code);
+                  if (session == null) {
+                    setDialogState(
+                        () => errorText = 'Código no encontrado o expirado');
+                    return;
+                  }
 
-                final ok = await _classroom.joinSession(code, name);
-                if (ok) {
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  setState(() {});
-                } else {
-                  setDialogState(() => errorText = 'Error al unirse');
+                  final ok = await _classroom.joinSession(code, name);
+                  if (ok) {
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    setState(() {});
+                  } else {
+                    setDialogState(() => errorText = 'Error al unirse');
+                  }
+                } catch (e) {
+                  debugPrint('ClassroomService error: $e');
+                  setDialogState(() => errorText = 'Error de conexión: $e');
                 }
               },
               child: const Text('Unirse',
