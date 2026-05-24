@@ -6,7 +6,7 @@ class ClassroomService {
   factory ClassroomService() => _instance;
   ClassroomService._();
 
-  static const _baseUrl = 'https://didarsis.com/api/aula';
+  static const _baseUrl = '/api/aula';
 
   String? _studentId;
   String? _sessionCode;

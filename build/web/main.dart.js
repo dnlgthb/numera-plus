@@ -84131,7 +84131,7 @@ AN(a){return this.as9(a)},
 as9(a){var s=0,r=A.N(t.nA),q,p
 var $async$AN=A.O(function(b,c){if(b===1)return A.K(c,r)
 for(;;)switch(s){case 0:s=3
-return A.P(A.aSo(A.fm("https://didarsis.com/api/aula/sessions/"+a.toUpperCase(),0,null)),$async$AN)
+return A.P(A.aSo(A.fm("/api/aula/sessions/"+a.toUpperCase(),0,null)),$async$AN)
 case 3:p=c
 if(p.b===200){q=t.a.a(B.bT.Gq(A.aDV(A.aCS(p.e)).eK(p.w),null))
 s=1
@@ -84143,7 +84143,7 @@ return A.M($async$AN,r)},
 zu(a,b){return this.aoz(a,b)},
 aoz(a,b){var s=0,r=A.N(t.y),q,p=this,o,n,m,l
 var $async$zu=A.O(function(c,d){if(c===1)return A.K(d,r)
-for(;;)switch(s){case 0:o=A.fm("https://didarsis.com/api/aula/sessions/"+a.toUpperCase()+"/join",0,null)
+for(;;)switch(s){case 0:o=A.fm("/api/aula/sessions/"+a.toUpperCase()+"/join",0,null)
 n=t.N
 m=A.at(["Content-Type","application/json"],n,n)
 s=3
@@ -84185,7 +84185,7 @@ break}l=n.d
 m=A.h5(l,!0,t.GU)
 B.b.W(l)
 p=4
-k=A.fm("https://didarsis.com/api/aula/events",0,null)
+k=A.fm("/api/aula/events",0,null)
 j=t.N
 i=A.at(["Content-Type","application/json"],j,j)
 s=7

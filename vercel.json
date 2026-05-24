@@ -4,6 +4,10 @@
   "outputDirectory": "build/web",
   "routes": [
     {
+      "src": "/api/aula/(.*)",
+      "dest": "https://didarsis.com/api/aula/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {
