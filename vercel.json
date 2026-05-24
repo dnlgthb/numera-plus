@@ -8,6 +8,15 @@
       "dest": "https://didarsis.com/api/aula/$1"
     },
     {
+      "src": "/numera/(.*)",
+      "dest": "/$1"
+    },
+    {
+      "src": "^/$",
+      "status": 308,
+      "headers": { "Location": "/numera/" }
+    },
+    {
       "handle": "filesystem"
     },
     {
