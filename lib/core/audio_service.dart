@@ -36,10 +36,11 @@ class AudioService {
 
   void playTap() => _play('audio/tap.wav', volume: 0.5);
   void playCorrect() => _play('audio/correct.wav', volume: 0.7);
-  void playWrong() => _play('audio/wrong.wav', volume: 0.7);
+  void playWrong() => _play('audio/wrong.mp3', volume: 0.7);
   void playSpellCast() => _play('audio/spell_cast.mp3', volume: 0.8);
-  void playImpact() => _play('audio/impact.wav', volume: 0.8);
+  void playImpact() => _play('audio/impact.mp3', volume: 0.8);
   void playVictory() => _play('audio/victory.mp3');
+  void playRoundWin() => _play('audio/round_win.mp3', volume: 0.7);
   void playDefeat() => _play('audio/defeat.mp3');
   void playCoin() => _play('audio/coin.mp3', volume: 0.7);
   void playStreak() => _play('audio/streak.mp3', volume: 0.6);

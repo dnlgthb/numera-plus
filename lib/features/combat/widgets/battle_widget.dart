@@ -278,7 +278,7 @@ class _BattleWidgetState extends State<BattleWidget>
       _machineThinking = false;
       if (_machineHP <= 0) {
         if (_currentRound == 0) {
-          _audio.playCorrect();
+          _audio.playRoundWin();
           Future.delayed(const Duration(milliseconds: 2000), () {
             if (!mounted) return;
             setState(() => _phase = BattlePhase.transition);

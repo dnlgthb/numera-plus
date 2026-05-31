@@ -89,17 +89,6 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
     });
   }
 
-  void _resetStats() {
-    setState(() {
-      _completed = 0;
-      _errors = 0;
-      _streak = 0;
-      _maxStreak = 0;
-      _coins = 0;
-      _starsInCurrentCoinCycle = 0;
-    });
-  }
-
   String get _opName => switch (widget.operation) {
     OperationType.sum => 'suma',
     OperationType.subtraction => 'resta',
@@ -291,7 +280,6 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
                   isEvalMode: _isEvalMode,
                   onChanged: (val) {
                     setState(() => _isEvalMode = val);
-                    _resetStats();
                     _newProblem();
                   },
                 ),
@@ -303,12 +291,10 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
                     showMentalToggle: !_isEvalMode,
                     onMentalChanged: (val) {
                       setState(() => _mentalMode = val);
-                      _resetStats();
                       _newProblem();
                     },
                     onDecimalChanged: (val) {
                       setState(() => _decimalMode = val);
-                      _resetStats();
                       _newProblem();
                     },
                   ),
