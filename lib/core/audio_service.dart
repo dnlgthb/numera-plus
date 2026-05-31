@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AudioService {
@@ -25,7 +26,11 @@ class AudioService {
     final player = AudioPlayer();
     player.setReleaseMode(ReleaseMode.stop);
     player.setVolume(volume);
-    player.play(AssetSource(asset));
+    if (kIsWeb) {
+      player.play(UrlSource('assets/assets/$asset'));
+    } else {
+      player.play(AssetSource(asset));
+    }
     player.onPlayerComplete.listen((_) => player.dispose());
   }
 
