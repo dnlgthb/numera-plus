@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme.dart';
 import '../../../core/sum_generator.dart';
+import '../../../core/audio_service.dart';
 
 class TwoPlayerBattleScreen extends StatefulWidget {
   const TwoPlayerBattleScreen({super.key});
@@ -12,6 +13,7 @@ class TwoPlayerBattleScreen extends StatefulWidget {
 
 class _TwoPlayerBattleScreenState extends State<TwoPlayerBattleScreen>
     with TickerProviderStateMixin {
+  final _audio = AudioService.instance;
   late SumProblem _problem;
   int _completed = 0;
 
@@ -81,10 +83,12 @@ class _TwoPlayerBattleScreenState extends State<TwoPlayerBattleScreen>
 
     if (correct) {
       _roundActive = false;
+      _audio.playSpellCast();
       setState(() => _spellDirection = player);
       _spellController.forward().then((_) {
         _spellController.reset();
         if (!mounted) return;
+        _audio.playImpact();
         setState(() {
           final target = player == 1 ? 2 : 1;
           if (target == 1) {
@@ -114,6 +118,7 @@ class _TwoPlayerBattleScreenState extends State<TwoPlayerBattleScreen>
         }
       });
     } else {
+      _audio.playWrong();
       Future.delayed(const Duration(milliseconds: 600), () {
         if (!mounted) return;
         setState(() {
@@ -134,6 +139,7 @@ class _TwoPlayerBattleScreenState extends State<TwoPlayerBattleScreen>
   }
 
   void _endGame(int winner) {
+    _audio.playVictory();
     Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
       showDialog(

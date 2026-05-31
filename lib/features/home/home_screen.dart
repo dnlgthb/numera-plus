@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/sum_generator.dart';
 import '../../core/classroom_service.dart';
+import '../../core/audio_service.dart';
 import '../algorithm/algorithm_screen.dart';
 import '../combat/combat_screen.dart';
 
@@ -15,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int? _expandedIndex;
   final _classroom = ClassroomService();
+  final _audio = AudioService.instance;
 
   @override
   void initState() {
@@ -28,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _toggleExpanded(int index) {
+    _audio.playSelect();
     setState(() {
       _expandedIndex = _expandedIndex == index ? null : index;
     });
@@ -160,6 +163,20 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
             children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  onPressed: () {
+                    _audio.toggleMute();
+                    setState(() {});
+                  },
+                  icon: Icon(
+                    _audio.muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                    color: Colors.white70,
+                    size: 28,
+                  ),
+                ),
+              ),
               // Logo
               Expanded(
                 child: Center(

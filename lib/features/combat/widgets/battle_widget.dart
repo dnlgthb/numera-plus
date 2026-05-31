@@ -5,6 +5,7 @@ import '../../../core/theme.dart';
 import '../../../core/sum_generator.dart';
 import '../../../core/character_type.dart';
 import '../../../core/classroom_service.dart';
+import '../../../core/audio_service.dart';
 enum BattlePhase { selecting, fighting, transition, victory, defeat }
 
 class BattleWidget extends StatefulWidget {
@@ -18,6 +19,7 @@ class BattleWidget extends StatefulWidget {
 class _BattleWidgetState extends State<BattleWidget>
     with TickerProviderStateMixin {
   final _classroom = ClassroomService();
+  final _audio = AudioService.instance;
 
   BattlePhase _phase = BattlePhase.selecting;
   CharacterType _playerCharacter = CharacterType.mage;
@@ -49,6 +51,7 @@ class _BattleWidgetState extends State<BattleWidget>
   CharacterType get _currentOpponent => _opponents[_currentRound];
 
   void _selectCharacter(CharacterType character) {
+    _audio.playSelect();
     setState(() {
       _playerCharacter = character;
       _opponents = CharacterType.values.where((c) => c != character).toList();
@@ -141,6 +144,7 @@ class _BattleWidgetState extends State<BattleWidget>
   void _machineAnswers() {
     if (!_roundActive || !mounted) return;
     _roundActive = false;
+    _audio.playSpellCast();
     setState(() {
       _machineThinking = false;
       _machineCasting = true;
@@ -148,6 +152,7 @@ class _BattleWidgetState extends State<BattleWidget>
 
     _machineSpellController.forward().then((_) {
       if (!mounted) return;
+      _audio.playImpact();
       setState(() {
         _machineCasting = false;
         _playerImpact = true;
@@ -174,6 +179,7 @@ class _BattleWidgetState extends State<BattleWidget>
 
   void _onDigitTap(int digit) {
     if (!_roundActive || _lastResult != null) return;
+    _audio.playTap();
     if (_isDivision) {
       final answerLen = _problem.answer.toString().length;
       if (_playerAnswer.length >= answerLen) return;
@@ -225,12 +231,14 @@ class _BattleWidgetState extends State<BattleWidget>
     if (correct) {
       _roundActive = false;
       _machineThinking = false;
+      _audio.playSpellCast();
       setState(() {
         _lastResult = true;
         _playerCasting = true;
       });
       _spellController.forward().then((_) {
         if (!mounted) return;
+        _audio.playImpact();
         setState(() {
           _machineImpact = true;
           _machineHP = (_machineHP - 1).clamp(0, 7);
@@ -248,6 +256,7 @@ class _BattleWidgetState extends State<BattleWidget>
         }
       });
     } else {
+      _audio.playWrong();
       setState(() => _lastResult = false);
       Future.delayed(const Duration(milliseconds: 400), () {
         if (!mounted) return;
@@ -269,6 +278,7 @@ class _BattleWidgetState extends State<BattleWidget>
       _machineThinking = false;
       if (_machineHP <= 0) {
         if (_currentRound == 0) {
+          _audio.playCorrect();
           Future.delayed(const Duration(milliseconds: 2000), () {
             if (!mounted) return;
             setState(() => _phase = BattlePhase.transition);
@@ -276,12 +286,14 @@ class _BattleWidgetState extends State<BattleWidget>
         } else {
           Future.delayed(const Duration(milliseconds: 2000), () {
             if (!mounted) return;
+            _audio.playVictory();
             setState(() => _phase = BattlePhase.victory);
           });
         }
       } else {
         Future.delayed(const Duration(milliseconds: 2000), () {
           if (!mounted) return;
+          _audio.playDefeat();
           setState(() => _phase = BattlePhase.defeat);
         });
       }

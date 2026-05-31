@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../core/sum_generator.dart';
 import '../../core/classroom_service.dart';
 import '../../core/local_progress_service.dart';
+import '../../core/audio_service.dart';
 import 'widgets/column_sum_widget.dart';
 import 'widgets/column_subtraction_widget.dart';
 import 'widgets/column_multiplication_widget.dart';
@@ -29,6 +30,7 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
 
   final _classroom = ClassroomService();
   final _localProgress = LocalProgressService();
+  final _audio = AudioService.instance;
 
   // Shared stats
   int _completed = 0;
@@ -124,6 +126,11 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
 
   // --- Practicar callbacks ---
   void _onPracticeCompleted(bool correct) {
+    if (correct) {
+      _audio.playCorrect();
+    } else {
+      _audio.playWrong();
+    }
     setState(() {
       _completed++;
       if (!correct) _errors++;
@@ -134,6 +141,7 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
   }
 
   void _onPracticeError() {
+    _audio.playWrong();
     setState(() {
       _errors++;
     });
@@ -143,21 +151,29 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
 
   // --- Desafio callbacks ---
   void _onEvalSubmitted(bool correct) {
+    if (correct) {
+      _audio.playCorrect();
+    } else {
+      _audio.playWrong();
+    }
     setState(() {
       _completed++;
       if (correct) {
         _streak++;
         _starsInCurrentCoinCycle++;
         if (_streak > _maxStreak) _maxStreak = _streak;
-        // Every 10 stars = 1 coin
         if (_starsInCurrentCoinCycle >= 10) {
           _coins++;
           _starsInCurrentCoinCycle = 0;
+          _audio.playCoin();
+        }
+        if (_streak > 0 && _streak % 5 == 0) {
+          _audio.playStreak();
         }
       } else {
         _errors++;
         _streak = 0;
-        _starsInCurrentCoinCycle = 0; // lose stars toward next coin
+        _starsInCurrentCoinCycle = 0;
       }
     });
     _reportEvent(correct);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/sum_generator.dart';
+import '../../core/audio_service.dart';
 import 'widgets/decomposition_widget.dart';
 
 class MentalScreen extends StatefulWidget {
@@ -32,6 +33,11 @@ class _MentalScreenState extends State<MentalScreen> {
 
   void _onAnswer(int answer) {
     final correct = answer == _problem.answer;
+    if (correct) {
+      AudioService.instance.playCorrect();
+    } else {
+      AudioService.instance.playWrong();
+    }
     setState(() {
       _total++;
       if (correct) _score++;

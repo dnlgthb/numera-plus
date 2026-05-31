@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/sum_generator.dart';
+import '../../core/audio_service.dart';
 import 'widgets/dohyo_widget.dart';
 
 class SumoScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class SumoScreen extends StatefulWidget {
 }
 
 class _SumoScreenState extends State<SumoScreen> {
+  final _audio = AudioService.instance;
   Difficulty _difficulty = Difficulty.easy;
   bool _gameActive = false;
   bool _gameOver = false;
@@ -68,6 +70,7 @@ class _SumoScreenState extends State<SumoScreen> {
   }
 
   void _rivalPushes() {
+    _audio.playImpact();
     setState(() {
       _position -= _pushAmount;
       _rivalScore++;
@@ -76,6 +79,7 @@ class _SumoScreenState extends State<SumoScreen> {
   }
 
   void _playerPushes() {
+    _audio.playCorrect();
     setState(() {
       _position += _pushAmount;
       _playerScore++;
@@ -85,6 +89,7 @@ class _SumoScreenState extends State<SumoScreen> {
   }
 
   void _playerFails() {
+    _audio.playWrong();
     setState(() {
       _position -= _pushAmount * 0.5;
     });
@@ -102,6 +107,11 @@ class _SumoScreenState extends State<SumoScreen> {
 
   void _endGame({required bool playerWon}) {
     _rivalTimer?.cancel();
+    if (playerWon) {
+      _audio.playVictory();
+    } else {
+      _audio.playDefeat();
+    }
     setState(() {
       _gameActive = false;
       _gameOver = true;
@@ -111,6 +121,7 @@ class _SumoScreenState extends State<SumoScreen> {
 
   void _onDigit(String digit) {
     if (!_gameActive) return;
+    _audio.playTap();
     setState(() {
       _inputValue += digit;
     });
