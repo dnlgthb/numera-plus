@@ -85071,7 +85071,7 @@ if(this.a)return
 s=A.aJc()
 s.vT(B.Or)
 s.vY(b)
-s.v5(new A.Ob("assets/assets/"+a,null))
+s.v5(new A.Ob("/assets/assets/"+a,null))
 s.gXs().km(new A.Z0(s))},
 Qv(a){return this.f_(a,1)}}
 A.Z0.prototype={

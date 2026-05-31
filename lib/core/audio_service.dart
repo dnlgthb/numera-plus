@@ -27,7 +27,7 @@ class AudioService {
     player.setReleaseMode(ReleaseMode.stop);
     player.setVolume(volume);
     if (kIsWeb) {
-      player.play(UrlSource('assets/assets/$asset'));
+      player.play(UrlSource('/assets/assets/$asset'));
     } else {
       player.play(AssetSource(asset));
     }
