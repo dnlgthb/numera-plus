@@ -115,11 +115,9 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
 
   // --- Practicar callbacks ---
   void _onPracticeCompleted(bool correct) {
-    if (correct) {
-      _audio.playCorrect();
-    } else {
-      _audio.playWrong();
-    }
+    // Los errores ya sonaron en el momento (_onPracticeError); terminar el
+    // ejercicio siempre se celebra con el sonido de acierto.
+    _audio.playCorrect();
     setState(() {
       _completed++;
       if (!correct) _errors++;
