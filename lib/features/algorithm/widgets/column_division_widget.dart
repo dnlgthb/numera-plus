@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/sum_generator.dart';
 
-const double _cellSize = 44;
-const double _cellGap = 3;
+const double _maxCellSize = 44;
+const double _minCellSize = 30;
+const double _maxCellGap = 3;
 
 enum _DivPhase {
   enterQuotient,
@@ -62,6 +63,14 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
   bool? _evalCorrect;
 
   bool get _isEval => widget.evalMode;
+
+  // Responsive sizing: en pantallas angostas las celdas se reducen hasta
+  // _minCellSize; si aun así no cabe, el layout hace scroll horizontal y la
+  // celda activa se trae a la vista automáticamente.
+  double _cellSize = _maxCellSize;
+  double _cellGap = _maxCellGap;
+  double get _scale => _cellSize / _maxCellSize;
+  final GlobalKey _activeCellKey = GlobalKey();
 
   int _originalDividendLen = 0;
   int _integerStepCount = 0;
@@ -475,6 +484,37 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
 
   // --- Build ---
 
+  /// Ancho estimado del layout a tamaño máximo de celda (fila superior:
+  /// dividendo + "÷" + divisor + "=" + cociente, más padding de la tarjeta).
+  double _estimatedFullWidth() {
+    final divisorLen = widget.problem.b.toString().length;
+    final quotientSlots = _hasDecimalPart
+        ? _quotientDigits.length + 1
+        : _quotientDigits.length;
+    final cellW = _maxCellSize + _maxCellGap * 2;
+    return (_dividendLen + quotientSlots) * cellW +
+        divisorLen * 17 + // texto del divisor
+        28 + // "÷" con espaciado
+        29 + // "=" con espaciado
+        32; // padding horizontal de la tarjeta
+  }
+
+  void _scrollToActiveCell() {
+    if (!mounted) return;
+    final ctx = _activeCellKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 250),
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+    );
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 250),
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bgColor = _isEval ? const Color(0xFF1E1E2C) : AppColors.surface;
@@ -482,7 +522,15 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
         ? Colors.black.withValues(alpha: 0.3)
         : AppColors.algorithm.withValues(alpha: 0.1);
 
-    final scrollContent = Column(
+    return LayoutBuilder(builder: (context, constraints) {
+      final scale = (constraints.maxWidth / _estimatedFullWidth())
+          .clamp(_minCellSize / _maxCellSize, 1.0);
+      _cellSize = _maxCellSize * scale;
+      _cellGap = _maxCellGap * scale;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActiveCell());
+
+      final scrollContent = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
@@ -498,7 +546,10 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
               ),
             ],
           ),
-          child: _buildDivisionLayout(),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: _buildDivisionLayout(),
+          ),
         ),
         const SizedBox(height: 20),
         if (_isEval && _evalSubmitted) _buildEvalFeedback(),
@@ -535,20 +586,21 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
       ],
     );
 
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            child: scrollContent,
+      return Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: scrollContent,
+            ),
           ),
-        ),
-        if (!_completed) ...[
-          const SizedBox(height: 8),
-          _buildDigitPalette(),
-          const SizedBox(height: 8),
+          if (!_completed) ...[
+            const SizedBox(height: 8),
+            _buildDigitPalette(),
+            const SizedBox(height: 8),
+          ],
         ],
-      ],
-    );
+      );
+    });
   }
 
   Widget _buildDivisionLayout() {
@@ -579,7 +631,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                 child: Text(
                   '÷',
                   style: TextStyle(
-                    fontSize: 30,
+                    fontSize: 30 * _scale,
                     fontWeight: FontWeight.w700,
                     color: textColor,
                   ),
@@ -600,7 +652,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                           child: Text(
                             divisorStr,
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 28 * _scale,
                               fontWeight: FontWeight.w700,
                               color: textColor,
                             ),
@@ -614,7 +666,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                           child: Text(
                             '=',
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 28 * _scale,
                               fontWeight: FontWeight.w700,
                               color: opColor,
                             ),
@@ -703,7 +755,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
             child: Container(
               width: _cellSize,
               height: _cellSize,
-              margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+              margin: EdgeInsets.symmetric(horizontal: _cellGap),
               decoration: BoxDecoration(
                 color: _evalSubmitted && evalDigitColor != null
                     ? evalDigitColor.withValues(alpha: 0.15)
@@ -733,7 +785,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                   ? Text(
                       '${_userQuotient[stepIdx]}',
                       style: TextStyle(
-                        fontSize: 26,
+                        fontSize: 26 * _scale,
                         fontWeight: FontWeight.w800,
                         color: _evalSubmitted && evalDigitColor != null
                             ? evalDigitColor
@@ -765,7 +817,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                   child: Container(
                     width: _cellSize,
                     height: _cellSize,
-                    margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+                    margin: EdgeInsets.symmetric(horizontal: _cellGap),
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(14),
@@ -782,7 +834,9 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
 
         if (!isActive || isFilled) return slotWidget;
 
-        return DragTarget<int>(
+        return KeyedSubtree(
+          key: _activeCellKey,
+          child: DragTarget<int>(
           onWillAcceptWithDetails: (_) => true,
           onAcceptWithDetails: (details) =>
               _onDropOnQuotient(slot, details.data),
@@ -793,7 +847,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                 child: Container(
                   width: _cellSize,
                   height: _cellSize,
-                  margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+                  margin: EdgeInsets.symmetric(horizontal: _cellGap),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(14),
@@ -805,7 +859,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
             }
             return slotWidget;
           },
-        );
+        ));
       }),
     );
   }
@@ -824,13 +878,13 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
       return AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-        width: 16,
+        width: 16 * _scale,
         height: _cellSize,
         alignment: Alignment.center,
         child: Text(
           ',',
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 28 * _scale,
             fontWeight: FontWeight.w800,
             color: color,
           ),
@@ -842,12 +896,12 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
       return Container(
         width: _cellSize,
         height: _cellSize,
-        margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+        margin: EdgeInsets.symmetric(horizontal: _cellGap),
         alignment: Alignment.center,
         child: Text(
           ',',
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 28 * _scale,
             fontWeight: FontWeight.w800,
             color: color,
           ),
@@ -866,7 +920,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
       child: Container(
         width: _cellSize,
         height: _cellSize,
-        margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+        margin: EdgeInsets.symmetric(horizontal: _cellGap),
         decoration: BoxDecoration(
           color: isActive
               ? color.withValues(alpha: 0.08)
@@ -890,7 +944,9 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
 
     if (!isActive) return commaWidget;
 
-    return DragTarget<int>(
+    return KeyedSubtree(
+      key: _activeCellKey,
+      child: DragTarget<int>(
       onWillAcceptWithDetails: (_) => true,
       onAcceptWithDetails: (details) =>
           _onDropOnQuotient(_integerStepCount, details.data),
@@ -901,7 +957,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
             child: Container(
               width: _cellSize,
               height: _cellSize,
-              margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+              margin: EdgeInsets.symmetric(horizontal: _cellGap),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(14),
@@ -913,7 +969,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
         }
         return commaWidget;
       },
-    );
+    ));
   }
 
   Widget _buildDividendRow(double width) {
@@ -950,7 +1006,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
           final child = Container(
             width: _cellSize,
             height: _cellSize,
-            margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+            margin: EdgeInsets.symmetric(horizontal: _cellGap),
             decoration: isBringDown
                 ? BoxDecoration(
                     color: accentColor.withValues(alpha: 0.12),
@@ -965,7 +1021,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
             child: Text(
               '${_dividendDigits[i]}',
               style: TextStyle(
-                fontSize: 26,
+                fontSize: 26 * _scale,
                 fontWeight: FontWeight.w700,
                 color: isBringDown
                     ? accentColor
@@ -979,9 +1035,12 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
           );
 
           if (isBringDown) {
-            return GestureDetector(
-              onTap: _onBringDown,
-              child: child,
+            return KeyedSubtree(
+              key: _activeCellKey,
+              child: GestureDetector(
+                onTap: _onBringDown,
+                child: child,
+              ),
             );
           }
           return child;
@@ -1010,12 +1069,12 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
             return Container(
               width: _cellSize,
               height: _cellSize,
-              margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+              margin: EdgeInsets.symmetric(horizontal: _cellGap),
               alignment: Alignment.center,
               child: Text(
                 '${remDigits[remIdx]}',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 22 * _scale,
                   fontWeight: FontWeight.w600,
                   color: _isEval
                       ? const Color(0xFF9999BB)
@@ -1031,7 +1090,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
               child: Container(
                 width: _cellSize,
                 height: _cellSize,
-                margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+                margin: EdgeInsets.symmetric(horizontal: _cellGap),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
@@ -1046,7 +1105,9 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
               ),
             );
 
-            return DragTarget<int>(
+            return KeyedSubtree(
+              key: _activeCellKey,
+              child: DragTarget<int>(
               onWillAcceptWithDetails: (_) => true,
               onAcceptWithDetails: (details) => _onAppendZero(details.data),
               builder: (context, candidateData, _) {
@@ -1056,7 +1117,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                     child: Container(
                       width: _cellSize,
                       height: _cellSize,
-                      margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+                      margin: EdgeInsets.symmetric(horizontal: _cellGap),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(14),
@@ -1068,7 +1129,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                 }
                 return slot;
               },
-            );
+            ));
           }
 
           return SizedBox(width: cellW);
@@ -1273,7 +1334,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                 child: Container(
                   width: _cellSize,
                   height: _cellSize,
-                  margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+                  margin: EdgeInsets.symmetric(horizontal: _cellGap),
                   decoration: BoxDecoration(
                     color: isFilled
                         ? (_isEval
@@ -1299,7 +1360,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                       ? Text(
                           '${entered[dIdx]}',
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 22 * _scale,
                             fontWeight: FontWeight.w700,
                             color: filledText,
                           ),
@@ -1316,7 +1377,9 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
 
               if (!isActive || isFilled) return slot;
 
-              return DragTarget<int>(
+              return KeyedSubtree(
+                key: _activeCellKey,
+                child: DragTarget<int>(
                 onWillAcceptWithDetails: (_) => true,
                 onAcceptWithDetails: (details) =>
                     onDrop(dIdx, details.data),
@@ -1328,7 +1391,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                         width: _cellSize,
                         height: _cellSize,
                         margin:
-                            const EdgeInsets.symmetric(horizontal: _cellGap),
+                            EdgeInsets.symmetric(horizontal: _cellGap),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(14),
@@ -1340,7 +1403,7 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
                   }
                   return slot;
                 },
-              );
+              ));
             }),
           ),
           if (hint != null && !_isEval)
@@ -1389,12 +1452,12 @@ class _ColumnDivisionWidgetState extends State<ColumnDivisionWidget> {
           return Container(
             width: _cellSize,
             height: 36,
-            margin: const EdgeInsets.symmetric(horizontal: _cellGap),
+            margin: EdgeInsets.symmetric(horizontal: _cellGap),
             alignment: Alignment.center,
             child: Text(
               '${digits[dIdx]}',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 20 * _scale,
                 fontWeight: FontWeight.w600,
                 color: color,
               ),
