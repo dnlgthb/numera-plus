@@ -120,7 +120,8 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
     _audio.playCorrect();
     setState(() {
       _completed++;
-      if (!correct) _errors++;
+      // Los errores ya se contaron uno a uno en _onPracticeError;
+      // no volver a sumarlos al completar.
     });
     _reportEvent(correct);
     _saveProgress();

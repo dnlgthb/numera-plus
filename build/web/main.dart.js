@@ -26051,8 +26051,7 @@ _.c=_.a=null},
 agS:function agS(a,b){this.a=a
 this.b=b},
 agT:function agT(a){this.a=a},
-agV:function agV(a,b){this.a=a
-this.b=b},
+agV:function agV(a){this.a=a},
 agW:function agW(a){this.a=a},
 agU:function agU(a,b){this.a=a
 this.b=b},
@@ -85701,7 +85700,7 @@ o===$&&A.a()
 s.w.rh(""+o.ghr(),r,q,p,null)},
 ael(a){var s=this
 s.y.fj("audio/correct.wav",0.7)
-s.N(new A.agV(s,a))
+s.N(new A.agV(s))
 s.Fc(a)
 s.Fl()
 A.eH(B.Fv,s.gMz(),t.H)},
@@ -85805,8 +85804,7 @@ $0(){var s=this.a,r=s.z,q=s.a.c
 s.d=A.aeI(r,s.r,q)},
 $S:0}
 A.agV.prototype={
-$0(){var s=this.a;++s.z
-if(!this.b)++s.Q},
+$0(){++this.a.z},
 $S:0}
 A.agW.prototype={
 $0(){++this.a.Q},
