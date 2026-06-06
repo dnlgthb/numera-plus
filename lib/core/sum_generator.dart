@@ -115,29 +115,21 @@ class SumGenerator {
       divisor = _random.nextInt(8) + 2; // 2-9
       quotient = _random.nextInt(9) + 2; // 2-10
     } else {
-      // Round 2: dividendos de 3 dígitos, 4 solo si terminan en 0
+      // Round 2: solo dividendos de 3 dígitos, resolubles mentalmente
       divisor = _random.nextInt(8) + 2; // 2-9
-      final roll = _random.nextDouble();
-      if (roll < 0.7) {
-        // 3 dígitos en el dividendo
-        final minQ = (100 / divisor).ceil();
-        final maxQ = (999 / divisor).floor();
-        quotient = _random.nextInt(maxQ - minQ + 1) + minQ;
+      if (_random.nextDouble() < 0.5) {
+        // Tabla + cero: cociente de la tabla por 10 (ej. 240÷6=40 → 24÷6 y el 0)
+        final minF = (10 / divisor).ceil().clamp(2, 9);
+        final maxF = (99 ~/ divisor).clamp(2, 9);
+        final factor = _random.nextInt(maxF - minF + 1) + minF;
+        quotient = factor * 10;
       } else {
-        // 4 dígitos en el dividendo, pero termina en 0
-        final minQ = (1000 / divisor).ceil();
-        final maxQ = (9999 / divisor).floor();
-        quotient = _random.nextInt(maxQ - minQ + 1) + minQ;
-        final dividend = divisor * quotient;
-        if (dividend % 10 != 0) {
-          // Forzar que termine en 0: buscar un cociente cercano cuyo producto termine en 0
-          for (int q = quotient; q <= maxQ; q++) {
-            if ((divisor * q) % 10 == 0) {
-              quotient = q;
-              break;
-            }
-          }
-        }
+        // Sin acarreo: cada cifra del dividendo se divide exacta entre el
+        // divisor (ej. 639÷3=213), así se resuelve cifra por cifra
+        final maxDigit = 9 ~/ divisor;
+        quotient = (_random.nextInt(maxDigit) + 1) * 100 +
+            _random.nextInt(maxDigit + 1) * 10 +
+            _random.nextInt(maxDigit + 1);
       }
     }
 

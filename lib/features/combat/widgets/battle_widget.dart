@@ -718,7 +718,9 @@ class _BattleArena extends StatelessWidget {
 
   Widget _buildSpell(AnimationController anim, double startX, double travel,
       Color color, bool reverse, double arenaHeight) {
-    final spellY = arenaHeight / 2;
+    // Anclado desde abajo (los personajes están al fondo de la arena):
+    // ~120px sobre el piso queda a la altura del pecho de los magos.
+    final spellY = (arenaHeight - 120).clamp(40.0, arenaHeight);
     return AnimatedBuilder(
       animation: anim,
       builder: (_, __) {
@@ -794,7 +796,7 @@ class _BattleArena extends StatelessWidget {
   }
 
   Widget _buildImpact(AnimationController anim, double x, Color color, double arenaHeight, bool active) {
-    final spellY = arenaHeight / 2;
+    final spellY = (arenaHeight - 120).clamp(40.0, arenaHeight);
     return AnimatedBuilder(
       animation: anim,
       builder: (_, __) {
@@ -838,7 +840,7 @@ class _BattleArena extends StatelessWidget {
             final angle = (i / 10) * pi * 2 + 0.3;
             final dist = p * 50;
             final px = x + cos(angle) * dist;
-            final py = 96 + sin(angle) * dist;
+            final py = spellY + sin(angle) * dist;
             final size = 5.0 * (1.0 - p * 0.7);
             return Positioned(
               left: px - size / 2, bottom: py - size / 2,
