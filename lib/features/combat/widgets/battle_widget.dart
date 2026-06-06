@@ -395,7 +395,16 @@ class _BattleWidgetState extends State<BattleWidget>
   }
 
   Widget _buildFightScreen() {
-    return Column(
+    return LayoutBuilder(builder: (context, constraints) {
+      // Repartir el alto: la arena conserva lo que necesitan los personajes
+      // (~270px) y el resto agranda los botones del teclado (42-64px).
+      const arenaIdeal = 270.0;
+      const fixedOverhead = 35.0 + 6.0 + 12.0; // header + gap + separaciones
+      final keyHeight =
+          ((constraints.maxHeight - arenaIdeal - fixedOverhead) / 4)
+              .clamp(42.0, 64.0);
+
+      return Column(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -437,12 +446,14 @@ class _BattleWidgetState extends State<BattleWidget>
                 onDigit: _onDigitTap, onBackspace: _onBackspace,
                 onSubmit: _onSubmit,
                 canSubmit: _playerAnswer.isNotEmpty && _roundActive,
+                keyHeight: keyHeight,
               ),
             ),
           ],
         ),
       ],
-    );
+      );
+    });
   }
 
   Widget _buildTransitionScreen() {
@@ -1325,10 +1336,12 @@ class _Keypad extends StatelessWidget {
   final ValueChanged<int> onDigit;
   final VoidCallback onBackspace, onSubmit;
   final bool canSubmit;
+  final double keyHeight;
 
   const _Keypad({
     required this.onDigit, required this.onBackspace,
-    required this.onSubmit, required this.canSubmit});
+    required this.onSubmit, required this.canSubmit,
+    this.keyHeight = 42});
 
   @override
   Widget build(BuildContext context) {
@@ -1358,12 +1371,14 @@ class _Keypad extends StatelessWidget {
             onTap: () => onDigit(digit),
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              height: 42, alignment: Alignment.center,
+              height: keyHeight, alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
               child: Text('$digit',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+                  style: TextStyle(
+                      fontSize: (keyHeight * 0.52).clamp(22.0, 32.0),
+                      fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),
         ),
@@ -1380,11 +1395,12 @@ class _Keypad extends StatelessWidget {
           child: InkWell(
             onTap: onTap, borderRadius: BorderRadius.circular(12),
             child: Container(
-              height: 42, alignment: Alignment.center,
+              height: keyHeight, alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: c.withValues(alpha: 0.3))),
-              child: Icon(icon, color: c, size: 24),
+              child: Icon(icon, color: c,
+                  size: (keyHeight * 0.57).clamp(24.0, 34.0)),
             ),
           ),
         ),
