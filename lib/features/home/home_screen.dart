@@ -121,12 +121,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     return;
                   }
 
+                  final sessionApp = session['app'] as String?;
+                  if (sessionApp != null &&
+                      sessionApp != ClassroomService.appId) {
+                    setDialogState(() => errorText =
+                        'Este código es para ${session['appLabel'] ?? 'otra app'}');
+                    return;
+                  }
+
                   final ok = await _classroom.joinSession(code, name);
                   if (ok) {
                     if (ctx.mounted) Navigator.pop(ctx);
                     setState(() {});
                   } else {
-                    setDialogState(() => errorText = 'Error al unirse');
+                    setDialogState(() =>
+                        errorText = _classroom.lastError ?? 'Error al unirse');
                   }
                 } catch (e) {
                   debugPrint('ClassroomService error: $e');

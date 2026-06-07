@@ -8,10 +8,12 @@ class ClassroomService {
   ClassroomService._();
 
   static const _baseUrl = '/api/aula';
+  static const appId = 'numera';
 
   String? _studentId;
   String? _sessionCode;
   String? _studentName;
+  String? lastError;
 
   String? get studentId => _studentId;
   String? get sessionCode => _sessionCode;
@@ -64,10 +66,11 @@ class ClassroomService {
   }
 
   Future<bool> joinSession(String code, String name) async {
+    lastError = null;
     final res = await http.post(
       Uri.parse('$_baseUrl/sessions/${code.toUpperCase()}/join'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'studentName': name}),
+      body: jsonEncode({'studentName': name, 'app': appId}),
     );
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -77,6 +80,10 @@ class ClassroomService {
       await _saveSession();
       return true;
     }
+    try {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      lastError = data['error'] as String?;
+    } catch (_) {}
     return false;
   }
 
