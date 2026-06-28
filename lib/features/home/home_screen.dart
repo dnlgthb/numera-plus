@@ -41,6 +41,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final codeController = TextEditingController();
     final nameController = TextEditingController();
     String? errorText;
+    // Info de la sesión, cargada al teclear el código completo. En modo
+    // "roster" el alumno elige su nombre de la lista del profe en vez de
+    // escribirlo.
+    Map<String, dynamic>? sessionInfo;
+    String? selectedRosterName;
+    String? lastCheckedCode;
+    bool checkingCode = false;
 
     showDialog(
       context: context,
@@ -57,6 +64,34 @@ class _HomeScreenState extends State<HomeScreen> {
               TextField(
                 controller: codeController,
                 textCapitalization: TextCapitalization.characters,
+                onChanged: (_) async {
+                  final c = codeController.text.trim().toUpperCase();
+                  if (c.length < 6) {
+                    if (sessionInfo != null ||
+                        checkingCode ||
+                        lastCheckedCode != null) {
+                      setDialogState(() {
+                        sessionInfo = null;
+                        selectedRosterName = null;
+                        checkingCode = false;
+                        lastCheckedCode = null;
+                      });
+                    }
+                    return;
+                  }
+                  if (c == lastCheckedCode) return;
+                  lastCheckedCode = c;
+                  setDialogState(() => checkingCode = true);
+                  final session = await _classroom.validateCode(c);
+                  // Ignorar respuestas viejas si el código siguió cambiando.
+                  if (c != codeController.text.trim().toUpperCase()) return;
+                  setDialogState(() {
+                    checkingCode = false;
+                    sessionInfo = session;
+                    selectedRosterName = null;
+                    nameController.clear();
+                  });
+                },
                 style: GoogleFonts.orbitron(
                     fontSize: 20, color: Colors.white, letterSpacing: 4),
                 textAlign: TextAlign.center,
@@ -72,19 +107,70 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: nameController,
-                style: const TextStyle(fontSize: 16, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Tu nombre',
-                  hintStyle: const TextStyle(color: Colors.white38),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.08),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
+              if (checkingCode)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white54),
+                  ),
+                )
+              else if (sessionInfo?['nameMode'] == 'roster')
+                Builder(builder: (_) {
+                  final names = (sessionInfo?['availableNames'] as List?)
+                          ?.map((e) => e.toString())
+                          .toList() ??
+                      const <String>[];
+                  if (names.isEmpty) {
+                    return const Text(
+                      'No quedan nombres disponibles en esta clase.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFFFFC107), fontSize: 13),
+                    );
+                  }
+                  return DropdownButtonFormField<String>(
+                    // Remonta el campo cuando cambia la lista (otro código),
+                    // evitando que quede seleccionado un nombre ya no presente.
+                    key: ValueKey(names.join('|')),
+                    initialValue: selectedRosterName,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF1A1528),
+                    iconEnabledColor: Colors.white54,
+                    hint: const Text('Elige tu nombre',
+                        style:
+                            TextStyle(color: Colors.white38, fontSize: 16)),
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                    items: names
+                        .map((n) =>
+                            DropdownMenuItem(value: n, child: Text(n)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setDialogState(() => selectedRosterName = v),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.08),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
+                    ),
+                  );
+                })
+              else
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(fontSize: 16, color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Tu nombre',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.08),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                  ),
                 ),
-              ),
               if (errorText != null) ...[
                 const SizedBox(height: 8),
                 Text(errorText!,
@@ -106,10 +192,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               onPressed: () async {
                 final code = codeController.text.trim();
-                final name = nameController.text.trim();
+                final isRoster = sessionInfo?['nameMode'] == 'roster';
+                final name = isRoster
+                    ? (selectedRosterName ?? '')
+                    : nameController.text.trim();
                 if (code.isEmpty || name.length < 2) {
-                  setDialogState(() =>
-                      errorText = 'Ingresa el código y tu nombre');
+                  setDialogState(() => errorText = isRoster
+                      ? 'Ingresa el código y elige tu nombre'
+                      : 'Ingresa el código y tu nombre');
                   return;
                 }
                 setDialogState(() => errorText = null);
