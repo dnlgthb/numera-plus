@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/sum_generator.dart';
 import '../../core/audio_service.dart';
+import '../../core/classroom_service.dart';
+import '../../widgets/target_banner.dart';
 import 'widgets/dohyo_widget.dart';
 
 class SumoScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class SumoScreen extends StatefulWidget {
 
 class _SumoScreenState extends State<SumoScreen> {
   final _audio = AudioService.instance;
+  final _classroom = ClassroomService();
   Difficulty _difficulty = Difficulty.easy;
   bool _gameActive = false;
   bool _gameOver = false;
@@ -78,7 +81,19 @@ class _SumoScreenState extends State<SumoScreen> {
     _checkWin();
   }
 
+  void _reportSumoEvent(bool correct) {
+    // Sumo siempre practica suma; reportar al aula para visibilidad on/off-task.
+    _classroom.sendEvent(
+      eventType: correct ? 'correct' : 'error',
+      operationType: OperationType.sum.code,
+      problemText: '${_currentProblem.a} + ${_currentProblem.b}',
+      studentAnswer: _inputValue,
+      correctAnswer: '${_currentProblem.answer}',
+    );
+  }
+
   void _playerPushes() {
+    _reportSumoEvent(true);
     _audio.playCorrect();
     setState(() {
       _position += _pushAmount;
@@ -89,6 +104,7 @@ class _SumoScreenState extends State<SumoScreen> {
   }
 
   void _playerFails() {
+    _reportSumoEvent(false);
     _audio.playWrong();
     setState(() {
       _position -= _pushAmount * 0.5;
@@ -146,6 +162,7 @@ class _SumoScreenState extends State<SumoScreen> {
   @override
   void dispose() {
     _rivalTimer?.cancel();
+    _classroom.flush();
     super.dispose();
   }
 
@@ -158,9 +175,16 @@ class _SumoScreenState extends State<SumoScreen> {
         foregroundColor: AppColors.sumoGame,
         elevation: 0,
       ),
-      body: _gameActive || _gameOver
-          ? _buildGame(context)
-          : _buildSetup(context),
+      body: Column(
+        children: [
+          ClassroomTargetBanner(currentOp: OperationType.sum.code),
+          Expanded(
+            child: _gameActive || _gameOver
+                ? _buildGame(context)
+                : _buildSetup(context),
+          ),
+        ],
+      ),
     );
   }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/sum_generator.dart';
 import '../../core/audio_service.dart';
+import '../../core/classroom_service.dart';
+import '../../widgets/target_banner.dart';
 import 'widgets/decomposition_widget.dart';
 
 class MentalScreen extends StatefulWidget {
@@ -12,6 +14,7 @@ class MentalScreen extends StatefulWidget {
 }
 
 class _MentalScreenState extends State<MentalScreen> {
+  final _classroom = ClassroomService();
   Difficulty _difficulty = Difficulty.medium;
   late SumProblem _problem;
   int _score = 0;
@@ -22,6 +25,12 @@ class _MentalScreenState extends State<MentalScreen> {
   void initState() {
     super.initState();
     _problem = SumGenerator.generate(_difficulty);
+  }
+
+  @override
+  void dispose() {
+    _classroom.flush();
+    super.dispose();
   }
 
   void _newProblem() {
@@ -42,6 +51,16 @@ class _MentalScreenState extends State<MentalScreen> {
       _total++;
       if (correct) _score++;
     });
+
+    // Mental siempre practica suma; reportar al aula para que el profesor vea
+    // on/off-task (la suma puede no ser la operación buscada).
+    _classroom.sendEvent(
+      eventType: correct ? 'correct' : 'error',
+      operationType: OperationType.sum.code,
+      problemText: '${_problem.a} + ${_problem.b}',
+      studentAnswer: '$answer',
+      correctAnswer: '${_problem.answer}',
+    );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -86,6 +105,7 @@ class _MentalScreenState extends State<MentalScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            ClassroomTargetBanner(currentOp: OperationType.sum.code),
             _DifficultySelector(
               selected: _difficulty,
               color: AppColors.mental,

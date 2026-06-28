@@ -15,12 +15,47 @@ class ClassroomService {
   String? _studentName;
   String? lastError;
 
+  /// Operaciones que el profesor pidió practicar en esta sesión (códigos
+  /// `suma/resta/multi/div`). Vacío = uso libre (cualquier operación cuenta).
+  final Set<String> _sessionOperations = {};
+
   String? get studentId => _studentId;
   String? get sessionCode => _sessionCode;
   String? get studentName => _studentName;
   bool get isInClassroom => _studentId != null;
 
+  Set<String> get sessionOperations => Set.unmodifiable(_sessionOperations);
+  bool get hasTargetOperations => _sessionOperations.isNotEmpty;
+
+  /// Una operación "cuenta" para puntos si no hay objetivo fijado (uso libre)
+  /// o si pertenece al conjunto objetivo de la sesión.
+  bool isTargetOp(String opCode) =>
+      _sessionOperations.isEmpty || _sessionOperations.contains(opCode);
+
   final List<Map<String, String>> _pendingEvents = [];
+
+  /// Extrae el conjunto de operaciones objetivo desde el JSON de una sesión.
+  /// Acepta `operationTypes` (lista, formato nuevo) y `operationType` (string
+  /// único, retrocompatibilidad). Valores nulos/vacíos = uso libre.
+  Set<String> _parseOperations(Map<String, dynamic>? session) {
+    final ops = <String>{};
+    if (session == null) return ops;
+    final list = session['operationTypes'];
+    if (list is List) {
+      for (final e in list) {
+        if (e is String && e.isNotEmpty) ops.add(e);
+      }
+    }
+    final single = session['operationType'];
+    if (single is String && single.isNotEmpty) ops.add(single);
+    return ops;
+  }
+
+  void _setOperations(Set<String> ops) {
+    _sessionOperations
+      ..clear()
+      ..addAll(ops);
+  }
 
   Future<void> restoreSession() async {
     final prefs = await SharedPreferences.getInstance();
@@ -33,6 +68,9 @@ class ClassroomService {
         _studentId = id;
         _sessionCode = code;
         _studentName = name;
+        // Refrescar el objetivo desde el servidor (el profesor pudo cambiarlo).
+        _setOperations(_parseOperations(session));
+        await _saveSession();
       } else {
         await _clearSaved();
       }
@@ -44,6 +82,8 @@ class ClassroomService {
     await prefs.setString('classroom_studentId', _studentId!);
     await prefs.setString('classroom_sessionCode', _sessionCode!);
     await prefs.setString('classroom_studentName', _studentName!);
+    await prefs.setStringList(
+        'classroom_operations', _sessionOperations.toList());
   }
 
   Future<void> _clearSaved() async {
@@ -51,6 +91,7 @@ class ClassroomService {
     await prefs.remove('classroom_studentId');
     await prefs.remove('classroom_sessionCode');
     await prefs.remove('classroom_studentName');
+    await prefs.remove('classroom_operations');
   }
 
   Future<Map<String, dynamic>?> validateCode(String code) async {
@@ -77,6 +118,7 @@ class ClassroomService {
       _studentId = data['studentId'] as String;
       _sessionCode = code.toUpperCase();
       _studentName = name;
+      _setOperations(_parseOperations(data));
       await _saveSession();
       return true;
     }
@@ -91,6 +133,7 @@ class ClassroomService {
     _studentId = null;
     _sessionCode = null;
     _studentName = null;
+    _sessionOperations.clear();
     _pendingEvents.clear();
     _clearSaved();
   }

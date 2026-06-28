@@ -6,6 +6,7 @@ import '../../core/sum_generator.dart';
 import '../../core/classroom_service.dart';
 import '../../core/local_progress_service.dart';
 import '../../core/audio_service.dart';
+import '../../widgets/target_banner.dart';
 import 'widgets/column_sum_widget.dart';
 import 'widgets/column_subtraction_widget.dart';
 import 'widgets/column_multiplication_widget.dart';
@@ -89,12 +90,7 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
     });
   }
 
-  String get _opName => switch (widget.operation) {
-    OperationType.sum => 'suma',
-    OperationType.subtraction => 'resta',
-    OperationType.multiplication => 'multi',
-    OperationType.division => 'div',
-  };
+  String get _opName => widget.operation.code;
 
   String get _problemStr => '${_problem.a} ${switch (widget.operation) {
     OperationType.sum => '+',
@@ -137,8 +133,14 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
     _saveProgress();
   }
 
+  /// En clase, solo la operación buscada por el profesor otorga puntos. Fuera de
+  /// clase (o sin objetivo fijado) todo cuenta como antes.
+  bool get _earnsPoints =>
+      !_classroom.isInClassroom || _classroom.isTargetOp(_opName);
+
   // --- Desafio callbacks ---
   void _onEvalSubmitted(bool correct) {
+    final earnsPoints = _earnsPoints;
     if (correct) {
       _audio.playCorrect();
     } else {
@@ -147,16 +149,20 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
     setState(() {
       _completed++;
       if (correct) {
-        _streak++;
-        _starsInCurrentCoinCycle++;
-        if (_streak > _maxStreak) _maxStreak = _streak;
-        if (_starsInCurrentCoinCycle >= 10) {
-          _coins++;
-          _starsInCurrentCoinCycle = 0;
-          _audio.playCoin();
-        }
-        if (_streak > 0 && _streak % 5 == 0) {
-          _audio.playStreak();
+        // La operación se practica igual, pero solo suma estrellas/monedas si
+        // es la operación buscada de la clase.
+        if (earnsPoints) {
+          _streak++;
+          _starsInCurrentCoinCycle++;
+          if (_streak > _maxStreak) _maxStreak = _streak;
+          if (_starsInCurrentCoinCycle >= 10) {
+            _coins++;
+            _starsInCurrentCoinCycle = 0;
+            _audio.playCoin();
+          }
+          if (_streak > 0 && _streak % 5 == 0) {
+            _audio.playStreak();
+          }
         }
       } else {
         _errors++;
@@ -164,9 +170,27 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
         _starsInCurrentCoinCycle = 0;
       }
     });
+    if (correct && !earnsPoints) _showOffTargetHint();
     _reportEvent(correct);
     _saveProgress();
     Future.delayed(const Duration(milliseconds: 1500), _newProblem);
+  }
+
+  /// Avisa al alumno que esta operación no suma puntos hoy y cuáles sí.
+  void _showOffTargetHint() {
+    if (!mounted) return;
+    final labels = _classroom.sessionOperations
+        .map(operationLabelFromCode)
+        .join(', ');
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Hoy cuenta: $labels — esta operación no suma puntos'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   Widget _buildOperationWidget() {
@@ -274,6 +298,7 @@ class _AlgorithmScreenState extends State<AlgorithmScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Column(
               children: [
+                ClassroomTargetBanner(currentOp: widget.operation.code),
                 // Mode switch
                 _ModeSwitch(
                   isEvalMode: _isEvalMode,

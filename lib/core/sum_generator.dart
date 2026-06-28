@@ -9,6 +9,30 @@ enum Difficulty {
 
 enum OperationType { sum, subtraction, multiplication, division }
 
+/// Código string canónico de cada operación. Es el mismo valor que viaja al
+/// backend de aula (`progress_events.operation_type`,
+/// `classroom_sessions.operation_types`) y con el que se compara
+/// `ClassroomService.sessionOperations`.
+extension OperationTypeCode on OperationType {
+  String get code => switch (this) {
+    OperationType.sum => 'suma',
+    OperationType.subtraction => 'resta',
+    OperationType.multiplication => 'multi',
+    OperationType.division => 'div',
+  };
+}
+
+/// Etiqueta legible a partir del código de operación (para mensajes al alumno).
+/// Equivale a `OP_LABELS` del backend.
+const Map<String, String> kOperationLabels = {
+  'suma': 'Suma',
+  'resta': 'Resta',
+  'multi': 'Multiplicación',
+  'div': 'División',
+};
+
+String operationLabelFromCode(String code) => kOperationLabels[code] ?? code;
+
 class SumProblem {
   final int a;
   final int b;

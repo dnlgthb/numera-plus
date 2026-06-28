@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../core/sum_generator.dart';
+import '../../widgets/target_banner.dart';
 import 'widgets/battle_widget.dart';
 
 class CombatScreen extends StatelessWidget {
@@ -35,7 +36,12 @@ class CombatScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-          child: BattleWidget(operation: operation),
+          child: Column(
+            children: [
+              ClassroomTargetBanner(currentOp: operation.code),
+              Expanded(child: BattleWidget(operation: operation)),
+            ],
+          ),
         ),
       ),
     );

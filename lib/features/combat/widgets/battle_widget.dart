@@ -197,12 +197,7 @@ class _BattleWidgetState extends State<BattleWidget>
         _playerAnswer = _playerAnswer.substring(0, _playerAnswer.length - 1));
   }
 
-  String get _opName => switch (widget.operation) {
-    OperationType.sum => 'suma',
-    OperationType.subtraction => 'resta',
-    OperationType.multiplication => 'multi',
-    OperationType.division => 'div',
-  };
+  String get _opName => widget.operation.code;
 
   void _onSubmit() {
     if (_playerAnswer.isEmpty || !_roundActive || _lastResult != null) return;

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/sum_generator.dart';
 import '../../core/classroom_service.dart';
 import '../../core/audio_service.dart';
+import '../../widgets/target_banner.dart';
 import '../algorithm/algorithm_screen.dart';
 import '../combat/combat_screen.dart';
 
@@ -198,6 +199,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              // Operación buscada por el profesor (solo en clase con objetivo)
+              const ClassroomTargetBanner(),
               // Two buttons side by side
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,13 +213,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => _toggleExpanded(0),
                       options: [
                         _NavOption('Suma', Icons.add_rounded,
-                            const AlgorithmScreen(operation: OperationType.sum)),
+                            const AlgorithmScreen(operation: OperationType.sum),
+                            OperationType.sum.code),
                         _NavOption('Resta', Icons.remove_rounded,
-                            const AlgorithmScreen(operation: OperationType.subtraction)),
+                            const AlgorithmScreen(operation: OperationType.subtraction),
+                            OperationType.subtraction.code),
                         _NavOption('Multi', Icons.close_rounded,
-                            const AlgorithmScreen(operation: OperationType.multiplication)),
+                            const AlgorithmScreen(operation: OperationType.multiplication),
+                            OperationType.multiplication.code),
                         _NavOption('Div', Icons.safety_divider_rounded,
-                            const AlgorithmScreen(operation: OperationType.division)),
+                            const AlgorithmScreen(operation: OperationType.division),
+                            OperationType.division.code),
                       ],
                     ),
                   ),
@@ -229,13 +236,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () => _toggleExpanded(1),
                       options: [
                         _NavOption('Suma', Icons.add_rounded,
-                            const CombatScreen(operation: OperationType.sum)),
+                            const CombatScreen(operation: OperationType.sum),
+                            OperationType.sum.code),
                         _NavOption('Resta', Icons.remove_rounded,
-                            const CombatScreen(operation: OperationType.subtraction)),
+                            const CombatScreen(operation: OperationType.subtraction),
+                            OperationType.subtraction.code),
                         _NavOption('Multi', Icons.close_rounded,
-                            const CombatScreen(operation: OperationType.multiplication)),
+                            const CombatScreen(operation: OperationType.multiplication),
+                            OperationType.multiplication.code),
                         _NavOption('Div', Icons.safety_divider_rounded,
-                            const CombatScreen(operation: OperationType.division)),
+                            const CombatScreen(operation: OperationType.division),
+                            OperationType.division.code),
                       ],
                     ),
                   ),
@@ -318,7 +329,8 @@ class _NavOption {
   final String label;
   final IconData icon;
   final Widget screen;
-  const _NavOption(this.label, this.icon, this.screen);
+  final String opCode;
+  const _NavOption(this.label, this.icon, this.screen, this.opCode);
 }
 
 class _ExpandableButton extends StatelessWidget {
@@ -387,32 +399,50 @@ class _ExpandableButton extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
                 child: Column(
                   children: options.map((opt) {
+                    final classroom = ClassroomService();
+                    // En clase con objetivo, las operaciones no buscadas siguen
+                    // accesibles pero se atenúan y avisan que no suman puntos.
+                    final offTarget = classroom.isInClassroom &&
+                        classroom.hasTargetOperations &&
+                        !classroom.isTargetOp(opt.opCode);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => opt.screen),
-                        ),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: _purple.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: _purple.withValues(alpha: 0.5)),
+                      child: Opacity(
+                        opacity: offTarget ? 0.45 : 1.0,
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => opt.screen),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(opt.icon, color: Colors.white, size: 22),
-                              const SizedBox(width: 8),
-                              Text(opt.label, style: GoogleFonts.orbitron(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              )),
-                            ],
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _purple.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: _purple.withValues(alpha: 0.5)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(opt.icon, color: Colors.white, size: 22),
+                                const SizedBox(width: 8),
+                                Text(opt.label, style: GoogleFonts.orbitron(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                )),
+                                if (offTarget) ...[
+                                  const SizedBox(width: 8),
+                                  Text('no cuenta hoy',
+                                      style: GoogleFonts.orbitron(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white70,
+                                      )),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
