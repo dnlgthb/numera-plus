@@ -242,11 +242,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _leaveClassroom() {
-    _classroom.leaveSession();
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
