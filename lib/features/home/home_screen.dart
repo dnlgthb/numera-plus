@@ -27,7 +27,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _tryRestoreSession() async {
     await _classroom.restoreSession();
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    // Deep-link del aula: una URL con ?code=XXXXXX (QR del profe) abre el
+    // diálogo con el código ya cargado, listo para elegir nombre. Solo si el
+    // alumno no está ya en una clase restaurada.
+    if (!_classroom.isInClassroom) {
+      final code = Uri.base.queryParameters['code']?.trim();
+      if (code != null && code.isNotEmpty) {
+        _showJoinDialog(initialCode: code.toUpperCase());
+      }
+    }
   }
 
   void _toggleExpanded(int index) {
@@ -37,8 +47,41 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _showJoinDialog() {
-    final codeController = TextEditingController();
+  // Permite al alumno salir de la clase (p.ej. si el profe lo liberó por haber
+  // entrado mal, o para reingresar con otro nombre).
+  void _confirmLeaveClass() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1528),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Salir de la clase',
+            style: GoogleFonts.orbitron(
+                fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+        content: const Text(
+          '¿Seguro que quieres salir de la clase? Podrás volver a unirte con el código.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              _classroom.leaveSession();
+              Navigator.pop(ctx);
+              setState(() {});
+            },
+            child: const Text('Salir', style: TextStyle(color: Color(0xFFFF4081))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showJoinDialog({String? initialCode}) {
+    final codeController = TextEditingController(text: initialCode ?? '');
     final nameController = TextEditingController();
     String? errorText;
     // Info de la sesión, cargada al teclear el código completo. En modo
@@ -48,11 +91,48 @@ class _HomeScreenState extends State<HomeScreen> {
     String? selectedRosterName;
     String? lastCheckedCode;
     bool checkingCode = false;
+    bool autoFetchScheduled = false;
+
+    // Consulta la info de la sesión para un código y refresca el diálogo.
+    // Reutilizada por el onChanged del campo y por el deep-link (initialCode).
+    Future<void> checkCode(String raw, StateSetter setDialogState) async {
+      final c = raw.trim().toUpperCase();
+      if (c.length < 6) {
+        if (sessionInfo != null || checkingCode || lastCheckedCode != null) {
+          setDialogState(() {
+            sessionInfo = null;
+            selectedRosterName = null;
+            checkingCode = false;
+            lastCheckedCode = null;
+          });
+        }
+        return;
+      }
+      if (c == lastCheckedCode) return;
+      lastCheckedCode = c;
+      setDialogState(() => checkingCode = true);
+      final session = await _classroom.validateCode(c);
+      // Ignorar respuestas viejas si el código siguió cambiando.
+      if (c != codeController.text.trim().toUpperCase()) return;
+      setDialogState(() {
+        checkingCode = false;
+        sessionInfo = session;
+        selectedRosterName = null;
+        nameController.clear();
+      });
+    }
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+        builder: (ctx, setDialogState) {
+          // Con código por deep-link, cargar la sesión una sola vez al abrir.
+          if (initialCode != null && !autoFetchScheduled) {
+            autoFetchScheduled = true;
+            WidgetsBinding.instance.addPostFrameCallback(
+                (_) => checkCode(initialCode, setDialogState));
+          }
+          return AlertDialog(
           backgroundColor: const Color(0xFF1A1528),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('Unirse a Clase',
@@ -64,34 +144,8 @@ class _HomeScreenState extends State<HomeScreen> {
               TextField(
                 controller: codeController,
                 textCapitalization: TextCapitalization.characters,
-                onChanged: (_) async {
-                  final c = codeController.text.trim().toUpperCase();
-                  if (c.length < 6) {
-                    if (sessionInfo != null ||
-                        checkingCode ||
-                        lastCheckedCode != null) {
-                      setDialogState(() {
-                        sessionInfo = null;
-                        selectedRosterName = null;
-                        checkingCode = false;
-                        lastCheckedCode = null;
-                      });
-                    }
-                    return;
-                  }
-                  if (c == lastCheckedCode) return;
-                  lastCheckedCode = c;
-                  setDialogState(() => checkingCode = true);
-                  final session = await _classroom.validateCode(c);
-                  // Ignorar respuestas viejas si el código siguió cambiando.
-                  if (c != codeController.text.trim().toUpperCase()) return;
-                  setDialogState(() {
-                    checkingCode = false;
-                    sessionInfo = session;
-                    selectedRosterName = null;
-                    nameController.clear();
-                  });
-                },
+                onChanged: (_) =>
+                    checkCode(codeController.text, setDialogState),
                 style: GoogleFonts.orbitron(
                     fontSize: 20, color: Colors.white, letterSpacing: 4),
                 textAlign: TextAlign.center,
@@ -237,7 +291,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: Colors.white)),
             ),
           ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -338,7 +393,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Classroom indicator (no exit button)
+              // Classroom indicator with exit button
               if (_classroom.isInClassroom)
                 Container(
                   width: double.infinity,
@@ -365,6 +420,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: const Color(0xFF00E676),
                           ),
                           overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: _confirmLeaveClass,
+                        borderRadius: BorderRadius.circular(8),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.logout_rounded,
+                              color: Color(0xFF00E676), size: 18),
                         ),
                       ),
                     ],
